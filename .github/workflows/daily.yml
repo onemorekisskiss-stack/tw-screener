@@ -1,0 +1,29 @@
+name: 每日更新選股資料
+on:
+  schedule:
+    - cron: "30 9 * * 1-5"   # 台北時間週一到週五 17:30
+  workflow_dispatch: {}       # 也可以手動按「Run workflow」
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - uses: actions/cache@v4
+        with:
+          path: cache
+          key: twse-cache-${{ github.run_id }}
+          restore-keys: twse-cache-
+      - run: python build_free_csv.py --out docs/screener.csv
+      - name: 提交更新
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add docs/screener.csv
+          git diff --cached --quiet || (git commit -m "更新選股資料 $(date +%F)" && git push)
